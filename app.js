@@ -4,7 +4,6 @@ const sqlite3 = require("sqlite3")
 const path = require("path")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
-require("dotenv").config()
 
 const app = express()
 app.use(express.json())
@@ -13,7 +12,7 @@ app.use(express.json())
 const dbPath = process.env.DB_PATH || path.join(__dirname, "finance.db")
 let db = null
 
-// JWT SECRET (env + fallback)
+// JWT SECRET
 const JWT_SECRET = process.env.JWT_SECRET || "MY_SECRET_TOKEN"
 
 // -------------------- MIDDLEWARES --------------------
