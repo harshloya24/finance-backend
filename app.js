@@ -4,16 +4,17 @@ const sqlite3 = require("sqlite3")
 const path = require("path")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
+require("dotenv").config()
 
 const app = express()
 app.use(express.json())
 
-
+// DB PATH
 const dbPath = process.env.DB_PATH || path.join(__dirname, "finance.db")
 let db = null
 
-
-const JWT_SECRET = "MY_SECRET_TOKEN"
+// JWT SECRET (env + fallback)
+const JWT_SECRET = process.env.JWT_SECRET || "MY_SECRET_TOKEN"
 
 // -------------------- MIDDLEWARES --------------------
 
@@ -113,17 +114,21 @@ const initializeDBAndServer = async () => {
     app.post("/register/", async (req, res) => {
       const { username, password, role } = req.body
 
-      const user = await db.get(
+      if (!username || !password) {
+        return res.status(400).send("Username and password required")
+      }
+
+      if (password.length < 6) {
+        return res.status(400).send("Password too short")
+      }
+
+      const existingUser = await db.get(
         `SELECT * FROM users WHERE username = ?`,
         [username]
       )
 
-      if (user) {
+      if (existingUser) {
         return res.status(400).send("User already exists")
-      }
-
-      if (!password || password.length < 6) {
-        return res.status(400).send("Password is too short")
       }
 
       const hashedPassword = await bcrypt.hash(password, 10)
@@ -186,7 +191,7 @@ const initializeDBAndServer = async () => {
           return res.status(400).send("Invalid amount")
         }
 
-        if (type !== "income" && type !== "expense") {
+        if (!["income", "expense"].includes(type)) {
           return res.status(400).send("Invalid type")
         }
 
@@ -201,24 +206,39 @@ const initializeDBAndServer = async () => {
       }
     )
 
-    // GET TRANSACTIONS
+    // GET TRANSACTIONS WITH FILTERING
     app.get(
       "/transactions/",
       authenticateToken,
       authorizeRoles(["viewer", "analyst", "admin"]),
       async (req, res) => {
         const { userId, role } = req.user
+        const { type, category, date } = req.query
 
-        const query =
-          role === "admin"
-            ? `SELECT * FROM transactions`
-            : `SELECT * FROM transactions WHERE user_id = ?`
+        let query = `SELECT * FROM transactions WHERE 1=1`
+        let params = []
 
-        const data =
-          role === "admin"
-            ? await db.all(query)
-            : await db.all(query, [userId])
+        if (role !== "admin") {
+          query += ` AND user_id = ?`
+          params.push(userId)
+        }
 
+        if (type) {
+          query += ` AND type = ?`
+          params.push(type)
+        }
+
+        if (category) {
+          query += ` AND category = ?`
+          params.push(category)
+        }
+
+        if (date) {
+          query += ` AND date = ?`
+          params.push(date)
+        }
+
+        const data = await db.all(query, params)
         res.send(data)
       }
     )
@@ -245,7 +265,7 @@ const initializeDBAndServer = async () => {
           return res.status(400).send("Invalid amount")
         }
 
-        if (type !== "income" && type !== "expense") {
+        if (!["income", "expense"].includes(type)) {
           return res.status(400).send("Invalid type")
         }
 
@@ -344,7 +364,6 @@ const initializeDBAndServer = async () => {
       }
     )
 
-    
     const PORT = process.env.PORT || 3000
 
     app.listen(PORT, () => {
