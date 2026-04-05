@@ -8,11 +8,11 @@ const bcrypt = require("bcrypt")
 const app = express()
 app.use(express.json())
 
-// ✅ DB PATH (Render-safe)
+
 const dbPath = process.env.DB_PATH || path.join(__dirname, "finance.db")
 let db = null
 
-// ⚠️ For production you'd use .env, but keeping simple
+
 const JWT_SECRET = "MY_SECRET_TOKEN"
 
 // -------------------- MIDDLEWARES --------------------
