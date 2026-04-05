@@ -8,13 +8,16 @@ const bcrypt = require("bcrypt")
 const app = express()
 app.use(express.json())
 
-const dbPath = path.join(__dirname, "finance.db")
+// ✅ DB PATH (Render-safe)
+const dbPath = process.env.DB_PATH || path.join(__dirname, "finance.db")
 let db = null
 
+// ⚠️ For production you'd use .env, but keeping simple
 const JWT_SECRET = "MY_SECRET_TOKEN"
 
 // -------------------- MIDDLEWARES --------------------
 
+// Authenticate Token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"]
 
@@ -33,6 +36,7 @@ const authenticateToken = (req, res, next) => {
   })
 }
 
+// Authorize Roles
 const authorizeRoles = (roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
@@ -118,7 +122,7 @@ const initializeDBAndServer = async () => {
         return res.status(400).send("User already exists")
       }
 
-      if (password.length < 6) {
+      if (!password || password.length < 6) {
         return res.status(400).send("Password is too short")
       }
 
@@ -169,7 +173,7 @@ const initializeDBAndServer = async () => {
       res.send({ jwtToken: token })
     })
 
-    // CREATE
+    // CREATE TRANSACTION
     app.post(
       "/transactions/",
       authenticateToken,
@@ -197,7 +201,7 @@ const initializeDBAndServer = async () => {
       }
     )
 
-    // READ
+    // GET TRANSACTIONS
     app.get(
       "/transactions/",
       authenticateToken,
@@ -219,7 +223,7 @@ const initializeDBAndServer = async () => {
       }
     )
 
-    // UPDATE
+    // UPDATE TRANSACTION
     app.put(
       "/transactions/:id/",
       authenticateToken,
@@ -256,7 +260,7 @@ const initializeDBAndServer = async () => {
       }
     )
 
-    // DELETE
+    // DELETE TRANSACTION
     app.delete(
       "/transactions/:id/",
       authenticateToken,
@@ -340,8 +344,11 @@ const initializeDBAndServer = async () => {
       }
     )
 
-    app.listen(3000, () => {
-      console.log("Server Running at http://localhost:3000/")
+    
+    const PORT = process.env.PORT || 3000
+
+    app.listen(PORT, () => {
+      console.log(`Server Running at http://localhost:${PORT}/`)
     })
   } catch (e) {
     console.log(`DB Error: ${e.message}`)
